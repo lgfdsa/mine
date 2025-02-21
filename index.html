@@ -2,69 +2,55 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>가게 검색</title>
+    <title>맛집 필터링 및 지도</title>
     <style>
-        body { font-family: Arial, sans-serif; padding: 20px; }
+        body { display: flex; font-family: Arial, sans-serif; }
+        #leftPanel { width: 50%; padding: 20px; }
+        #rightPanel { width: 50%; height: 100vh; position: sticky; top: 0; }
+        table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+        th, td { border: 1px solid black; padding: 8px; text-align: center; }
+        th { background-color: #f2f2f2; }
+        #map { width: 100%; height: 100%; }
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); }
-        .modal-content { background-color: white; margin: 15% auto; padding: 20px; width: 50%; }
+        .modal-content { background-color: white; margin: 15% auto; padding: 20px; border: 1px solid #888; width: 50%; }
+        .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
     </style>
 </head>
 <body>
-    <h1>가게 검색</h1>
-    <input type="text" id="shopName" placeholder="가게 이름 입력">
-    <button onclick="searchShop()">검색</button>
+    <div id="leftPanel">
+        <h1>맛집 데이터 필터링</h1>
+        <label>카테고리 선택 (복수 선택 가능):</label><br>
+        <select id="categorySelect" multiple size="5"></select>
+        <button onclick="generateTableAndMap()">필터링 및 지도 표시</button>
+        <button onclick="openAddModal()">추가</button>
+        <div id="tableContainer"></div>
+    </div>
+    <div id="rightPanel">
+        <div id="map"></div>
+    </div>
 
-    <script>
-        async function searchShop() {
-            const query = document.getElementById("shopName").value.trim();
-            if (!query) {
-                alert("가게 이름을 입력하세요!");
-                return;
-            }
+    <!-- 모달 -->
+    <div id="addModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeAddModal()">×</span>
+            <h2>맛집 추가</h2>
+            <label>가게 이름:</label><br>
+            <input type="text" id="shopName" style="width: 70%;" placeholder="가게 이름 입력">
+            <button onclick="searchShop()">검색</button><br>
+            <label>상호명:</label><br>
+            <input type="text" id="name"><br>
+            <label>카테고리:</label><br>
+            <input type="text" id="category"><br>
+            <label>평점 (0~5):</label><br>
+            <input type="number" id="rating" min="0" max="5" step="0.1"><br>
+            <label>수용인원:</label><br>
+            <input type="number" id="capacity" min="1"><br>
+            <button onclick="addRestaurant()">확인</button>
+        </div>
+    </div>
 
-            try {
-                const response = await fetch(`http://localhost:3000/search?query=${encodeURIComponent(query)}`);
-                const results = await response.json();
-                if (results.error) {
-                    alert(results.error);
-                } else {
-                    openResultsWindow(results);
-                }
-            } catch (error) {
-                alert("서버 연결 실패");
-                console.error("Fetch 에러:", error);
-            }
-        }
-
-        function openResultsWindow(results) {
-            const popup = window.open("", "Search Results", "width=600,height=400");
-            popup.document.write(`
-                <html>
-                <head><title>검색 결과</title></head>
-                <body>
-                    <h2>검색 결과 (상위 5개)</h2>
-                    <ul>
-                        ${results.map((item, index) => `
-                            <li>
-                                <strong>${item.name}</strong> (${item.category})<br>
-                                주소: ${item.address}<br>
-                                <button onclick="window.opener.selectShop(${index})">선택</button>
-                            </li>
-                        `).join("")}
-                    </ul>
-                </body>
-                </html>
-            `);
-            popup.document.close();
-
-            // 선택 함수를 부모 창에 추가
-            window.selectShop = function(index) {
-                const selected = results[index];
-                console.log("선택한 가게:", selected);
-                alert(`선택: ${selected.name} (${selected.lat}, ${selected.lng})`);
-                popup.close();
-            };
-        }
-    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <script type="text/javascript" src="https://openapi.map.naver.com/openapi/v3/maps.js?ncpClientId=kikn3nqbu9"></script>
+    <script src="script.js"></script>
 </body>
 </html>
