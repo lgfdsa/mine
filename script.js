@@ -103,7 +103,7 @@ async function searchShop() {
     }
 
     try {
-        const response = await fetch(`http://localhost:3000/search?query=${encodeURIComponent(query)}`);
+        const response = await fetch(`http://localhost:8080search?query=${encodeURIComponent(query)}`);
         const results = await response.json();
         if (results.error) {
             alert(results.error);
