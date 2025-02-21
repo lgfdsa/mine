@@ -4,7 +4,7 @@ let restaurantsData = [];
 
 function initMap() {
     if (typeof naver === "undefined" || !naver.maps) {
-        console.error("네이버 지도 API가 로드되지 않았습니다.");
+        console.error("네이버 지도 API가 로드되지 않았습니다. 재시도 중...");
         setTimeout(initMap, 500);
         return;
     }
@@ -12,6 +12,7 @@ function initMap() {
         center: new naver.maps.LatLng(37.5665, 126.9780),
         zoom: 14
     });
+    console.log("지도 초기화 완료");
 }
 
 window.onload = function() {
@@ -19,7 +20,7 @@ window.onload = function() {
         download: true,
         header: true,
         complete: function(results) {
-            restaurantsData = results.data;
+            restaurantsData = results.data.filter(row => row.lat && row.lng);
             updateCategorySelect();
             initMap();
         },
@@ -27,6 +28,13 @@ window.onload = function() {
             console.error("CSV 로드 실패:", err);
         }
     });
+
+    // 이벤트 리스너 추가
+    document.getElementById("filterButton").addEventListener("click", generateTableAndMap);
+    document.getElementById("addButton").addEventListener("click", openAddModal);
+    document.querySelector(".close").addEventListener("click", closeAddModal);
+    document.getElementById("checkLinkButton").addEventListener("click", checkNaverLink);
+    document.getElementById("confirmAddButton").addEventListener("click", addRestaurant);
 };
 
 function updateCategorySelect() {
@@ -45,7 +53,8 @@ function updateCategorySelect() {
 
 function generateTableAndMap() {
     if (!map) {
-        console.error("지도가 초기화되지 않았습니다.");
+        console.error("지도가 아직 초기화되지 않았습니다.");
+        alert("지도를 로드 중입니다. 잠시 후 다시 시도해주세요.");
         return;
     }
 
@@ -77,10 +86,12 @@ function generateTableAndMap() {
 function openAddModal() {
     document.getElementById("addModal").style.display = "block";
 }
+
 function closeAddModal() {
     document.getElementById("addModal").style.display = "none";
     clearModalInputs();
 }
+
 function clearModalInputs() {
     document.getElementById("naverLink").value = "";
     document.getElementById("name").value = "";
@@ -90,24 +101,23 @@ function clearModalInputs() {
     document.getElementById("naverLink").dataset.coords = "";
 }
 
-// 네이버 링크 유효성 검사 및 데이터 채우기
 function checkNaverLink() {
     const link = document.getElementById("naverLink").value.trim();
-    console.log("입력된 링크:", link); // 디버깅용
+    console.log("입력된 링크:", link);
 
-    // 네이버 지도 URL에서 lng와 lat 추출
     const regex = /lng=(\d+\.\d+)&lat=(\d+\.\d+)/i;
     const match = link.match(regex);
 
     if (match) {
-        const lng = match[1]; // 경도
-        const lat = match[2]; // 위도
-        document.getElementById("name").value = "가게명 (자동 추출)"; // 임시값
-        document.getElementById("category").value = "카테고리 (자동 추출)"; // 임시값
-        document.getElementById("naverLink").dataset.coords = `${lat},${lng}`; // 좌표 저장
+        const lng = match[1];
+        const lat = match[2];
+        document.getElementById("name").value = "가게명 (자동 추출)";
+        document.getElementById("category").value = "카테고리 (자동 추출)";
+        document.getElementById("naverLink").dataset.coords = `${lat},${lng}`;
+        console.log("추출된 좌표:", { lat, lng });
     } else {
         alert("유효한 네이버 지도 링크를 입력하세요. (예: https://map.naver.com/...&lng=127.0403801&lat=37.4850352)");
-        document.getElementById("naverLink").dataset.coords = ""; // 좌표 초기화
+        document.getElementById("naverLink").dataset.coords = "";
     }
 }
 
