@@ -21,8 +21,8 @@
         <h1>맛집 데이터 필터링</h1>
         <label>카테고리 선택 (복수 선택 가능):</label><br>
         <select id="categorySelect" multiple size="5"></select>
-        <button onclick="generateTableAndMap()">필터링 및 지도 표시</button>
-        <button onclick="openAddModal()">추가</button>
+        <button id="filterButton">필터링 및 지도 표시</button>
+        <button id="addButton">추가</button>
         <div id="tableContainer"></div>
     </div>
     <div id="rightPanel">
@@ -32,11 +32,11 @@
     <!-- 모달 -->
     <div id="addModal" class="modal">
         <div class="modal-content">
-            <span class="close" onclick="closeAddModal()">×</span>
+            <span class="close">&times;</span>
             <h2>맛집 추가</h2>
             <label>네이버 지도 링크:</label><br>
             <input type="text" id="naverLink" style="width: 70%;">
-            <button onclick="checkNaverLink()">확인</button><br>
+            <button id="checkLinkButton">확인</button><br>
             <label>상호명:</label><br>
             <input type="text" id="name"><br>
             <label>카테고리:</label><br>
@@ -45,7 +45,7 @@
             <input type="number" id="rating" min="0" max="5" step="0.1"><br>
             <label>수용인원:</label><br>
             <input type="number" id="capacity" min="1"><br>
-            <button onclick="addRestaurant()">확인</button>
+            <button id="confirmAddButton">확인</button>
         </div>
     </div>
 
