@@ -136,7 +136,7 @@ async function checkNaverLink() {
     console.log("입력된 링크:", link);
 
     try {
-        const response = await fetch(`http://localhost:3000/place?url=${encodeURIComponent(link)}`);
+        const response = await fetch(`http://localhost:8080/place?url=${encodeURIComponent(link)}`);
         const data = await response.json();
         if (data.error) {
             alert(data.error);
