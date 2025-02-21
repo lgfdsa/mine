@@ -2,11 +2,10 @@ const csvFilePath = "restaurants.csv";
 let map = null;
 let restaurantsData = [];
 
-// 네이버 지도 API 로드 완료 확인
 function initMap() {
     if (typeof naver === "undefined" || !naver.maps) {
         console.error("네이버 지도 API가 로드되지 않았습니다.");
-        setTimeout(initMap, 500); // 0.5초 후 재시도
+        setTimeout(initMap, 500);
         return;
     }
     map = new naver.maps.Map("map", {
@@ -15,7 +14,6 @@ function initMap() {
     });
 }
 
-// 페이지 로드 시 초기화
 window.onload = function() {
     Papa.parse(csvFilePath, {
         download: true,
@@ -23,7 +21,7 @@ window.onload = function() {
         complete: function(results) {
             restaurantsData = results.data;
             updateCategorySelect();
-            initMap(); // 지도 초기화
+            initMap();
         },
         error: function(err) {
             console.error("CSV 로드 실패:", err);
@@ -31,7 +29,6 @@ window.onload = function() {
     });
 };
 
-// 카테고리 선택 업데이트
 function updateCategorySelect() {
     const categories = [...new Set(restaurantsData.map(row => row.category))];
     const select = document.getElementById("categorySelect");
@@ -46,7 +43,6 @@ function updateCategorySelect() {
     });
 }
 
-// 필터링 및 지도 표시
 function generateTableAndMap() {
     if (!map) {
         console.error("지도가 초기화되지 않았습니다.");
@@ -78,7 +74,6 @@ function generateTableAndMap() {
     }
 }
 
-// 모달 열기/닫기
 function openAddModal() {
     document.getElementById("addModal").style.display = "block";
 }
@@ -92,36 +87,44 @@ function clearModalInputs() {
     document.getElementById("category").value = "";
     document.getElementById("rating").value = "";
     document.getElementById("capacity").value = "";
+    document.getElementById("naverLink").dataset.coords = "";
 }
 
-// 네이버 링크 파싱
-function parseNaverLink() {
-    const link = document.getElementById("naverLink").value;
-    const regex = /c=(\d+\.\d+),(\d+\.\d+)/;
+// 네이버 링크 유효성 검사 및 데이터 채우기
+function checkNaverLink() {
+    const link = document.getElementById("naverLink").value.trim();
+    console.log("입력된 링크:", link); // 디버깅용
+
+    // 네이버 지도 URL에서 lng와 lat 추출
+    const regex = /lng=(\d+\.\d+)&lat=(\d+\.\d+)/i;
     const match = link.match(regex);
+
     if (match) {
-        const lng = match[1];
-        const lat = match[2];
-        document.getElementById("name").value = "가게명 (자동)";
-        document.getElementById("category").value = "카테고리 (자동)";
-        return { lat, lng };
+        const lng = match[1]; // 경도
+        const lat = match[2]; // 위도
+        document.getElementById("name").value = "가게명 (자동 추출)"; // 임시값
+        document.getElementById("category").value = "카테고리 (자동 추출)"; // 임시값
+        document.getElementById("naverLink").dataset.coords = `${lat},${lng}`; // 좌표 저장
     } else {
-        alert("유효한 네이버 지도 링크를 입력하세요.");
-        return null;
+        alert("유효한 네이버 지도 링크를 입력하세요. (예: https://map.naver.com/...&lng=127.0403801&lat=37.4850352)");
+        document.getElementById("naverLink").dataset.coords = ""; // 좌표 초기화
     }
 }
 
-// 맛집 추가
 function addRestaurant() {
-    const coords = parseNaverLink();
-    if (!coords) return;
+    const coords = document.getElementById("naverLink").dataset.coords;
+    if (!coords) {
+        alert("먼저 네이버 링크를 확인해주세요.");
+        return;
+    }
 
+    const [lat, lng] = coords.split(",");
     const newRestaurant = {
         category: document.getElementById("category").value,
         name: document.getElementById("name").value,
         rating: document.getElementById("rating").value,
-        lat: coords.lat,
-        lng: coords.lng,
+        lat: lat,
+        lng: lng,
         capacity: document.getElementById("capacity").value
     };
 
