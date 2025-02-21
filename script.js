@@ -80,3 +80,59 @@ function generateTableAndMap() {
 
 // 모달 열기/닫기
 function openAddModal() {
+    document.getElementById("addModal").style.display = "block";
+}
+function closeAddModal() {
+    document.getElementById("addModal").style.display = "none";
+    clearModalInputs();
+}
+function clearModalInputs() {
+    document.getElementById("naverLink").value = "";
+    document.getElementById("name").value = "";
+    document.getElementById("category").value = "";
+    document.getElementById("rating").value = "";
+    document.getElementById("capacity").value = "";
+}
+
+// 네이버 링크 파싱
+function parseNaverLink() {
+    const link = document.getElementById("naverLink").value;
+    const regex = /c=(\d+\.\d+),(\d+\.\d+)/;
+    const match = link.match(regex);
+    if (match) {
+        const lng = match[1];
+        const lat = match[2];
+        document.getElementById("name").value = "가게명 (자동)";
+        document.getElementById("category").value = "카테고리 (자동)";
+        return { lat, lng };
+    } else {
+        alert("유효한 네이버 지도 링크를 입력하세요.");
+        return null;
+    }
+}
+
+// 맛집 추가
+function addRestaurant() {
+    const coords = parseNaverLink();
+    if (!coords) return;
+
+    const newRestaurant = {
+        category: document.getElementById("category").value,
+        name: document.getElementById("name").value,
+        rating: document.getElementById("rating").value,
+        lat: coords.lat,
+        lng: coords.lng,
+        capacity: document.getElementById("capacity").value
+    };
+
+    restaurantsData.push(newRestaurant);
+    updateCategorySelect();
+    closeAddModal();
+
+    const csv = Papa.unparse(restaurantsData);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "restaurants_updated.csv";
+    link.click();
+}
