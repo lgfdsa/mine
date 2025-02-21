@@ -131,23 +131,26 @@ function clearModalInputs() {
     document.getElementById("naverLink").dataset.coords = "";
 }
 
-function checkNaverLink() {
+async function checkNaverLink() {
     const link = document.getElementById("naverLink").value.trim();
     console.log("입력된 링크:", link);
 
-    const regex = /lng=(\d+\.\d+)&lat=(\d+\.\d+)/i;
-    const match = link.match(regex);
-
-    if (match) {
-        const lng = match[1];
-        const lat = match[2];
-        document.getElementById("name").value = "가게명 (자동 추출)";
-        document.getElementById("category").value = "카테고리 (자동 추출)";
-        document.getElementById("naverLink").dataset.coords = `${lat},${lng}`;
-        document.getElementById("naverLink").dataset.url = link; // URL 저장
-    } else {
-        alert("유효한 네이버 지도 링크를 입력하세요.");
-        document.getElementById("naverLink").dataset.coords = "";
+    try {
+        const response = await fetch(`http://localhost:3000/place?url=${encodeURIComponent(link)}`);
+        const data = await response.json();
+        if (data.error) {
+            alert(data.error);
+            document.getElementById("naverLink").dataset.coords = "";
+        } else {
+            document.getElementById("name").value = data.name;
+            document.getElementById("category").value = data.category;
+            document.getElementById("naverLink").dataset.coords = `${data.lat},${data.lng}`;
+            document.getElementById("naverLink").dataset.url = data.url;
+            console.log("가져온 데이터:", data);
+        }
+    } catch (error) {
+        alert("서버 연결 실패");
+        console.error("Fetch 에러:", error);
     }
 }
 
