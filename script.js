@@ -105,12 +105,14 @@ async function searchShop() {
     try {
         const response = await fetch(`http://localhost:8080/search?query=${encodeURIComponent(query)}`);
         const results = await response.json();
+        console.log("수신",response);
         if (results.error) {
             alert(results.error);
         } else {
             searchResults = results; // 검색 결과 저장
             openResultsWindow(results);
         }
+        
     } catch (error) {
         alert("서버 연결 실패");
         console.error("Fetch 에러:", error);
@@ -144,12 +146,20 @@ window.selectShop = function(index) {
     document.getElementById("name").value = selected.name;
     document.getElementById("category").value = selected.category;
     document.getElementById("shopName").dataset.coords = `${selected.lat},${selected.lng}`; // 좌표 저장
+
+    const placeId = selected.link.match(/place\.map\.naver\.com\/(\d+)/)?.[1] || "없음";
+    document.getElementById("shopName").dataset.placeId = placeId; // dataset에 저장
+
     console.log("선택한 가게:", selected);
+       
     window.close(); // 팝업 닫기
 };
 
+
 function addRestaurant() {
     const coords = document.getElementById("shopName").dataset.coords;
+    const placeId = document.getElementById("shopName").dataset.placeId; // placeId 가져오기
+
     if (!coords) {
         alert("먼저 가게를 검색해서 선택해주세요!");
         return;
@@ -162,7 +172,8 @@ function addRestaurant() {
         rating: document.getElementById("rating").value,
         lat: lat,
         lng: lng,
-        capacity: document.getElementById("capacity").value
+        capacity: document.getElementById("capacity").value,
+        placeId: placeId // placeId 추가
     };
 
     restaurantsData.push(newRestaurant);
