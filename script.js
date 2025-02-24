@@ -150,7 +150,9 @@ window.selectShop = function(index) {
     const placeId = selected.link.match(/place\.map\.naver\.com\/(\d+)/)?.[1] || "없음";
     document.getElementById("shopName").dataset.placeId = placeId; // dataset에 저장
 
+    console.log("아이디",selected);
     console.log("선택한 가게:", selected);
+    console.log("아이디",selected.link);
        
     window.close(); // 팝업 닫기
 };
@@ -170,8 +172,8 @@ function addRestaurant() {
         category: document.getElementById("category").value,
         name: document.getElementById("name").value,
         rating: document.getElementById("rating").value,
-        lat: lat,
-        lng: lng,
+        lat: document.getElementById("lat").value,
+        lng: document.getElementById("lng").value,
         capacity: document.getElementById("capacity").value,
         placeId: placeId // placeId 추가
     };
