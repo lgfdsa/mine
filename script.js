@@ -146,6 +146,8 @@ window.selectShop = function(index) {
     document.getElementById("name").value = selected.name;
     document.getElementById("category").value = selected.category;
     document.getElementById("shopName").dataset.coords = `${selected.lat},${selected.lng}`; // 좌표 저장
+    document.getElementById("lat").value = selected.lat; // 좌표 저장
+    document.getElementById("lng").value = selected.lng; // 좌표 저장
 
     const placeId = selected.link.match(/place\.map\.naver\.com\/(\d+)/)?.[1] || "없음";
     document.getElementById("shopName").dataset.placeId = placeId; // dataset에 저장
