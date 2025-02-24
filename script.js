@@ -146,7 +146,7 @@ window.selectShop = function(index) {
     document.getElementById("name").value = selected.name;
     document.getElementById("category").value = selected.category;
     document.getElementById("shopName").dataset.coords = `${selected.lat},${selected.lng}`; // 좌표 저장
-    console.log('lat',mapy);
+    console.log('lat',selected.mapy);
     document.getElementById("lat").value = selected.mapy; // 좌표 저장
     document.getElementById("lng").value = selected.mapx; // 좌표 저장
 
