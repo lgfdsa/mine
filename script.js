@@ -1,7 +1,8 @@
 const csvFilePath = "restaurants.csv";
 let map = null;
 let restaurantsData = [];
-let searchResults = []; // 검색 결과 저장
+let searchResults = [];
+let activeInfoWindow = null;
 
 function initMap() {
     if (typeof naver === "undefined" || !naver.maps) {
@@ -15,19 +16,33 @@ function initMap() {
     });
 }
 
-window.onload = function() {
-    Papa.parse(csvFilePath, {
-        download: true,
-        header: true,
-        complete: function(results) {
-            restaurantsData = results.data.filter(row => row.lat && row.lng);
-            updateCategorySelect();
-            initMap();
-        },
-        error: function(err) {
-            console.error("CSV 로드 실패:", err);
+window.onload = async function() {
+    // 서버에서 데이터 가져오기
+    try {
+        const response = await fetch("http://localhost:8080/restaurants");
+        if (response.ok) {
+            restaurantsData = await response.json();
+            console.log("서버에서 데이터 로드:", restaurantsData);
+        } else {
+            throw new Error("서버 데이터 로드 실패");
         }
-    });
+    } catch (error) {
+        console.error("데이터 로드 중 오류:", error);
+        // 서버 실패 시 CSV에서 초기 데이터 로드
+        Papa.parse(csvFilePath, {
+            download: true,
+            header: true,
+            complete: function(results) {
+                restaurantsData = results.data.filter(row => row.lat && row.lng);
+                console.log("CSV에서 데이터 로드:", restaurantsData);
+            },
+            error: function(err) {
+                console.error("CSV 로드 실패:", err);
+            }
+        });
+    }
+    updateCategorySelect();
+    initMap();
 };
 
 function updateCategorySelect() {
@@ -42,6 +57,13 @@ function updateCategorySelect() {
             select.appendChild(option);
         }
     });
+}
+
+function convertNaverCoords(mapx, mapy) {
+    return {
+        lat: parseInt(mapy) / 10000000,
+        lng: parseInt(mapx) / 10000000
+    };
 }
 
 function generateTableAndMap() {
@@ -62,18 +84,60 @@ function generateTableAndMap() {
     tableHTML += "</table>";
     document.getElementById("tableContainer").innerHTML = tableHTML;
 
-    if (window.markers) window.markers.forEach(marker => marker.setMap(null));
+    if (window.markers) {
+        window.markers.forEach(marker => marker.setMap(null));
+    }
     window.markers = [];
 
     if (filteredData.length > 0) {
         const bounds = new naver.maps.LatLngBounds();
         filteredData.forEach(row => {
-            const position = new naver.maps.LatLng(row.lat, row.lng);
+            const lat = parseFloat(row.lat);
+            const lng = parseFloat(row.lng);
+            if (isNaN(lat) || isNaN(lng)) {
+                console.error(`잘못된 좌표: ${row.name}, lat: ${row.lat}, lng: ${row.lng}`);
+                return;
+            }
+            const position = new naver.maps.LatLng(lat, lng);
             bounds.extend(position);
-            const marker = new naver.maps.Marker({ position, map, title: row.name });
+
+            const marker = new naver.maps.Marker({
+                position: position,
+                map: map,
+                title: row.name
+            });
+
+            const infoWindow = new naver.maps.InfoWindow({
+                content: `
+                    <div style="padding: 10px;">
+                        <h3>${row.name}</h3>
+                        ${row.link ? `<a href="${row.link}" target="_blank"><img src="https://img.icons8.com/material-outlined/24/000000/link.png" alt="링크" /></a>` : ""}
+                    </div>
+                `
+            });
+
+            naver.maps.Event.addListener(marker, "click", function() {
+                if (activeInfoWindow) {
+                    activeInfoWindow.close();
+                }
+                infoWindow.open(map, marker);
+                activeInfoWindow = infoWindow;
+            });
+
             window.markers.push(marker);
+            console.log(`마커 추가: ${row.name} (${lat}, ${lng})`);
         });
-        map.fitBounds(bounds);
+
+        if (window.markers.length > 0) {
+            map.fitBounds(bounds);
+            const currentZoom = map.getZoom();
+            map.setZoom(currentZoom - 3);
+            console.log("지도 범위 조정 및 줌아웃 완료, 현재 줌:", map.getZoom());
+        } else {
+            console.warn("표시할 마커가 없습니다.");
+        }
+    } else {
+        console.log("필터링된 데이터가 없습니다.");
     }
 }
 
@@ -92,6 +156,10 @@ function clearModalInputs() {
     document.getElementById("category").value = "";
     document.getElementById("rating").value = "";
     document.getElementById("capacity").value = "";
+    document.getElementById("lat").value = "";
+    document.getElementById("lng").value = "";
+    document.getElementById("shopName").dataset.coords = "";
+    document.getElementById("shopName").dataset.link = "";
 }
 
 async function searchShop() {
@@ -104,17 +172,16 @@ async function searchShop() {
 
     try {
         const response = await fetch(`http://localhost:8080/search?query=${encodeURIComponent(query)}`);
-        const results = await response.json();
-        console.log("수신",response);
-        if (results.error) {
-            alert(results.error);
-        } else {
-            searchResults = results; // 검색 결과 저장
-            openResultsWindow(results);
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || "서버 응답 오류");
         }
-        
+        const results = await response.json();
+        console.log("수신된 데이터:", results);
+        searchResults = results;
+        openResultsWindow(results);
     } catch (error) {
-        alert("서버 연결 실패");
+        alert("서버 연결 실패: " + error.message);
         console.error("Fetch 에러:", error);
     }
 }
@@ -131,6 +198,7 @@ function openResultsWindow(results) {
                     <li>
                         <strong>${item.name}</strong> (${item.category})<br>
                         주소: ${item.address}<br>
+                        ${item.link ? `<a href="${item.link}" target="_blank">링크</a>` : ""}
                         <button onclick="window.opener.selectShop(${index})">선택</button>
                     </li>
                 `).join("")}
@@ -143,52 +211,79 @@ function openResultsWindow(results) {
 
 window.selectShop = function(index) {
     const selected = searchResults[index];
+    console.log("선택한 가게:", selected);
+
     document.getElementById("name").value = selected.name;
     document.getElementById("category").value = selected.category;
-    document.getElementById("shopName").dataset.coords = `${selected.lat},${selected.lng}`; // 좌표 저장
-    console.log('lat',selected.mapy);
-    document.getElementById("lat").value = selected.mapy; // 좌표 저장
-    document.getElementById("lng").value = selected.mapx; // 좌표 저장
+    const { lat, lng } = convertNaverCoords(selected.mapx, selected.mapy);
+    document.getElementById("lat").value = lat;
+    document.getElementById("lng").value = lng;
+    document.getElementById("shopName").dataset.coords = `${lat},${lng}`;
+    document.getElementById("shopName").dataset.link = selected.link || "";
+    console.log("coords1", document.getElementById("shopName").dataset.coords);
+    console.log("저장된 좌표:", document.getElementById("shopName").dataset.coords);
+    console.log("저장된 링크:", document.getElementById("shopName").dataset.link);
 
-    const placeId = selected.link.match(/place\.map\.naver\.com\/(\d+)/)?.[1] || "없음";
-    document.getElementById("shopName").dataset.placeId = placeId; // dataset에 저장
-
-    console.log("아이디",selected);
-    console.log("선택한 가게:", selected);
-    console.log("아이디",selected.link);
-       
-    window.close(); // 팝업 닫기
+    window.close();
 };
 
-
-function addRestaurant() {
-    const coords = document.getElementById("shopName").dataset.coords;
-    const placeId = document.getElementById("shopName").dataset.placeId; // placeId 가져오기
-
-    if (!coords) {
+async function addRestaurant() {
+    const name = document.getElementById("name").value;
+    console.log("name:", name);
+    if (!name) {
+        console.log("name 값이 비어있습니다:", name);
         alert("먼저 가게를 검색해서 선택해주세요!");
         return;
     }
 
-    const [lat, lng] = coords.split(",");
+    const lat = document.getElementById("lat").value;
+    const lng = document.getElementById("lng").value;
+
+    if (!lat || !lng) {
+        console.error("좌표가 입력되지 않았습니다:", { lat, lng });
+        alert("좌표가 설정되지 않았습니다. 가게를 검색해주세요!");
+        return;
+    }
+
     const newRestaurant = {
         category: document.getElementById("category").value,
-        name: document.getElementById("name").value,
-        rating: document.getElementById("rating").value,
-        lat: document.getElementById("lat").value,
-        lng: document.getElementById("lng").value,
-        capacity: document.getElementById("capacity").value,
-        placeId: placeId // placeId 추가
+        name: name,
+        rating: document.getElementById("rating").value || "0",
+        lat: lat,
+        lng: lng,
+        capacity: document.getElementById("capacity").value || "0",
+        link: document.getElementById("shopName").dataset.link || ""
     };
 
-    restaurantsData.push(newRestaurant);
-    updateCategorySelect();
-    closeAddModal();
+    console.log("추가할 레스토랑:", newRestaurant);
 
-    const csv = Papa.unparse(restaurantsData);
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = "restaurants_updated.csv";
-    link.click();
+    try {
+        const response = await fetch("http://localhost:8080/restaurants", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(newRestaurant)
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || "서버 저장 실패");
+        }
+
+        const updatedData = await response.json();
+        restaurantsData = updatedData;
+        console.log("서버에서 업데이트된 데이터:", restaurantsData);
+
+        updateCategorySelect();
+        closeAddModal();
+
+        const csv = Papa.unparse(restaurantsData);
+        const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = "restaurants_updated.csv";
+        link.click();
+    } catch (error) {
+        console.error("서버 저장 중 오류:", error);
+        alert("서버 저장에 실패했습니다: " + error.message);
+    }
 }
