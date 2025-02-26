@@ -11,7 +11,9 @@ function initMap() {
         return;
     }
     map = new naver.maps.Map("map", {
-        center: new naver.maps.LatLng(37.5665, 126.9780),
+        center: new naver.maps.LatLng(37.48577, 127.03420),
+        // 지도 최소 줌 레벨
+        minZoom: 10,
         zoom: 14
     });
 }
@@ -199,10 +201,16 @@ function openResultsWindow(results) {
                         <strong>${item.name}</strong> (${item.category})<br>
                         주소: ${item.address}<br>
                         ${item.link ? `<a href="${item.link}" target="_blank">링크</a>` : ""}
-                        <button onclick="window.opener.selectShop(${index})">선택</button>
+                        <button onclick="selectAndClose(${index})">선택</button>
                     </li>
                 `).join("")}
             </ul>
+            <script>
+                function selectAndClose(index) {
+                    window.opener.selectShop(index); // 메인 창의 함수 호출
+                    window.close(); // 팝업 창 닫기
+                }
+            </script>
         </body>
         </html>
     `);
@@ -223,8 +231,7 @@ window.selectShop = function(index) {
     console.log("coords1", document.getElementById("shopName").dataset.coords);
     console.log("저장된 좌표:", document.getElementById("shopName").dataset.coords);
     console.log("저장된 링크:", document.getElementById("shopName").dataset.link);
-
-    window.close();
+    // window.close(); <- 이 부분 제거
 };
 
 async function addRestaurant() {
